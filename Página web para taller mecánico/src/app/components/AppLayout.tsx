@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from "react-router";
-import { Wrench, Calendar, Car, PenTool, LogIn, LogOut } from "lucide-react";
+import { Wrench, Calendar, Car, PenTool, LogIn, LogOut, Star } from "lucide-react";
 import { Toaster } from "sonner";
 import { useAuth } from "../context/AuthContext";
 
@@ -34,6 +34,16 @@ export function AppLayout() {
               >
                 <Car className="w-4 h-4" />
                 <span className="hidden sm:inline">Mis Vehículos</span>
+              </NavLink>
+
+                            <NavLink 
+                to="/opiniones" 
+                className={({ isActive }) => 
+                  `flex items-center gap-2 text-sm font-medium transition-colors ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`
+                }
+              >
+                <Star className="w-4 h-4" />
+                <span className="hidden sm:inline">Opiniones</span>
               </NavLink>
               
               <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block mx-2"></div>
