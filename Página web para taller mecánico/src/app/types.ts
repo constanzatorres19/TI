@@ -104,3 +104,11 @@ export interface WarrantyClaim {
   plate: string;
   messages?: Message[];
 }
+// Agrega esto al final de src/app/types.ts
+export interface Opinion {
+  id: string;
+  authorName: string;
+  rating: number; // 1 a 5 estrellas
+  comment: string;
+  date: string;
+}
