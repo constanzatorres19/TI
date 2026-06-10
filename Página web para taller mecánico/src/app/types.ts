@@ -38,6 +38,7 @@ export interface VehicleStatus {
   plate: string;
   brand: string;
   model: string;
+  clientEmail: string;
   entryDate: string;
   progress: number;
   activePart: CarPart;
@@ -61,6 +62,7 @@ export type AppointmentStatus = "pending" | "confirmed" | "completed" | "rejecte
 export interface Appointment {
   id: string;
   customerName: string;
+  clientEmail: string;
   phone: string;
   plate: string;
   brand: string;
@@ -77,6 +79,7 @@ export interface Appointment {
 export interface RepairHistory {
   id: string;
   plate: string;
+  clientEmail: string;
   brand: string;
   model: string;
   service: string;
