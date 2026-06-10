@@ -36,9 +36,12 @@ type TimelineItem = {
 };
 
 export function DigitalTwin() {
-  const { isAuthenticated, login } = useAuth();
+  // PASO 3: Obtenemos userEmail desde el contexto global de autenticación
+  const { isAuthenticated, login, userEmail } = useAuth();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   
+  // Guardamos el input de correo del modal de login (por defecto una cuenta de prueba)
+  const [emailInput, setEmailInput] = useState("test@taller.com");
   const [plateSearched, setPlateSearched] = useState("ABCD-12");
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
@@ -54,15 +57,40 @@ export function DigitalTwin() {
   const [priorityDate, setPriorityDate] = useState("");
   
   const [surveyRepair, setSurveyRepair] = useState<RepairHistory | null>(null);
-  
-  // Encuesta de entrega (cuando pasa al historial)
   const [deliverySurveyRepair, setDeliverySurveyRepair] = useState<RepairHistory | null>(null);
 
-  const loadVehicleData = (plate: string) => {
-    const p = plate.toUpperCase();
-    const past = mockHistory[p] || [];
-    const current = mockVehicles[p];
-    const appt = mockAppointments.find(a => a.plate === p && a.status !== 'confirmed');
+  // PASO 3: Modificada la función para buscar registros dinámicamente según el correo del usuario logueado
+  const loadVehicleData = (email: string | null) => {
+    if (!email) return;
+
+    // 1. Buscar vehículo en taller que pertenezca a este correo
+    const current = Object.values(mockVehicles).find(
+      v => v.clientEmail?.toLowerCase() === email.toLowerCase()
+    );
+    
+    const plate = current ? current.plate : "";
+
+    // 2. Traer el historial asociado a esa patente o directamente al correo
+    let past = plate ? (mockHistory[plate.toUpperCase()] || []) : [];
+    if (past.length === 0) {
+      past = Object.values(mockHistory).flat().filter(
+        h => h.clientEmail?.toLowerCase() === email.toLowerCase()
+      );
+    }
+
+    // 3. Traer citas agendadas asociadas a este correo
+    const appt = mockAppointments.find(
+      a => a.clientEmail?.toLowerCase() === email.toLowerCase() && a.status !== 'confirmed'
+    );
+
+    // Actualizamos dinámicamente la patente del encabezado según lo encontrado
+    if (plate) {
+      setPlateSearched(plate);
+    } else if (appt) {
+      setPlateSearched(appt.plate);
+    } else if (past.length > 0) {
+      setPlateSearched(past[0].plate);
+    }
 
     let newTimeline: TimelineItem[] = [];
     
@@ -99,31 +127,38 @@ export function DigitalTwin() {
     }
   };
 
+  // PASO 3: Enviamos el correo ingresado a la función global de login
   const handleAuthSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    login();
+    login(emailInput);
     setIsLoginModalOpen(false);
   };
 
+  // PASO 3: Efectos ahora gatillados y sincronizados por el userEmail
   useEffect(() => {
-    if (isAuthenticated) loadVehicleData(plateSearched);
-    else { setTimeline([]); setSelectedItem(null); setSurveyRepair(null); setDeliverySurveyRepair(null); }
-  }, [isAuthenticated, plateSearched]);
+    if (isAuthenticated && userEmail) {
+      loadVehicleData(userEmail);
+    } else { 
+      setTimeline([]); 
+      setSelectedItem(null); 
+      setSurveyRepair(null); 
+      setDeliverySurveyRepair(null); 
+    }
+  }, [isAuthenticated, userEmail]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (isAuthenticated) {
-        loadVehicleData(plateSearched);
+      if (isAuthenticated && userEmail) {
+        loadVehicleData(userEmail);
       }
     }, 1500); 
     return () => clearInterval(interval);
-  }, [isAuthenticated, plateSearched]);
+  }, [isAuthenticated, userEmail]);
 
   useEffect(() => {
     if (isContacting && messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
   }, [isContacting, selectedItem?.data]);
 
-  // Efecto que detecta si hay un vehículo recién entregado (en el historial) sin encuestar
   useEffect(() => {
     if (!isAuthenticated) return;
     const unratedDelivery = timeline
@@ -145,7 +180,7 @@ export function DigitalTwin() {
         repairInStore.deliverySurveyCompleted = true; 
       }
       setDeliverySurveyRepair(null);
-      loadVehicleData(plateSearched);
+      loadVehicleData(userEmail);
       toast.success(`Evaluación de ${stars} estrellas enviada. ¡Gracias por preferir nuestro taller!`);
     }
   };
@@ -166,7 +201,7 @@ export function DigitalTwin() {
     };
     
     setContactMessage("");
-    loadVehicleData(plateSearched);
+    loadVehicleData(userEmail);
     toast.success("Mensaje enviado");
   };
 
@@ -182,7 +217,7 @@ export function DigitalTwin() {
       }
     };
 
-    loadVehicleData(plateSearched);
+    loadVehicleData(userEmail);
 
     if(accepted) toast.success("¡Presupuesto aceptado! El taller comenzará la reparación.");
     else toast.error("Presupuesto rechazado. El mecánico será notificado.");
@@ -195,7 +230,7 @@ export function DigitalTwin() {
     if (appt && appt.proposedDate && appt.proposedTime) {
       appt.date = appt.proposedDate; appt.time = appt.proposedTime;
       appt.status = "confirmed"; appt.proposedDate = undefined; appt.proposedTime = undefined;
-      loadVehicleData(plateSearched);
+      loadVehicleData(userEmail);
       toast.success("¡Excelente! Has confirmado el nuevo horario.");
     }
   };
@@ -213,7 +248,7 @@ export function DigitalTwin() {
     if (repairInStore) repairInStore.isClosed = true;
     toast.success("Tu solicitud de garantía ha sido enviada con éxito.");
     setIsFilingClaim(false); setClaimComment("");
-    loadVehicleData(plateSearched);
+    loadVehicleData(userEmail);
   };
 
   const handleSurveySubmit = (result: 'perfect' | 'problem', repairId: string) => {
@@ -222,7 +257,7 @@ export function DigitalTwin() {
       repairInStore.surveyStatus = result;
       if (result === 'perfect') repairInStore.isClosed = true;
     }
-    loadVehicleData(plateSearched);
+    loadVehicleData(userEmail);
     if (result === 'perfect') toast.success("¡Excelente! Agradecemos tu confirmación.");
     else setShowPriorityAgenda(true);
   };
@@ -233,6 +268,7 @@ export function DigitalTwin() {
     const [datePart, timePart] = priorityDate.split(" ");
     mockAppointments.push({
       id: `A-PV-${Date.now()}`, customerName: "Cliente", phone: "+56 9 0000 0000",
+      clientEmail: userEmail || "test@taller.com",
       plate: plateSearched, brand: pastData.brand, model: pastData.model,
       service: "Revisión Post-Venta", date: datePart.split("/").reverse().join("-"), time: timePart, status: "pending"
     });
@@ -245,7 +281,7 @@ export function DigitalTwin() {
     if (repairInStore) repairInStore.isClosed = true;
     setShowPriorityAgenda(false);
     toast.success("¡Hora prioritaria confirmada! Te esperamos.");
-    loadVehicleData(plateSearched);
+    loadVehicleData(userEmail);
   };
 
   // --- RENDERS ---
@@ -443,7 +479,17 @@ export function DigitalTwin() {
               </div>
               <div className="p-6">
                 <form onSubmit={handleAuthSubmit} className="space-y-4">
-                  <div><label className="text-xs font-medium text-slate-500 block mb-1">Correo electrónico</label><input required type="email" defaultValue="cliente@ejemplo.com" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm" /></div>
+                  {/* PASO 3: El input ahora está controlado por el estado local emailInput */}
+                  <div>
+                    <label className="text-xs font-medium text-slate-500 block mb-1">Correo electrónico</label>
+                    <input 
+                      required 
+                      type="email" 
+                      value={emailInput} 
+                      onChange={(e) => setEmailInput(e.target.value)} 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm" 
+                    />
+                  </div>
                   <div><label className="text-xs font-medium text-slate-500 block mb-1">Contraseña</label><input required type="password" defaultValue="cliente123" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm" /></div>
                   <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-xl mt-2">Ingresar a mi Cuenta</button>
                 </form>
