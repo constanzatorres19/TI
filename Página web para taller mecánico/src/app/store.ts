@@ -1,4 +1,4 @@
-import { VehicleStatus, Appointment, RepairHistory, WarrantyClaim, Mechanic } from "./types";
+import { VehicleStatus, Appointment, RepairHistory, WarrantyClaim, Mechanic, Opinion } from "./types";
 import { format, subDays } from "date-fns";
 
 const today = format(new Date(), "yyyy-MM-dd");
@@ -137,3 +137,19 @@ export const mockHistory: Record<string, RepairHistory[]> = {
 };
 
 export const mockWarrantyClaims: WarrantyClaim[] = [];
+export const mockOpinions: Opinion[] = [
+  {
+    id: "OP-1",
+    authorName: "Juan Pérez",
+    rating: 5,
+    comment: "Excelente servicio. Fui por una mantención de kilometraje y me explicaron todo el presupuesto con claridad a través del Gemelo Digital. ¡Muy recomendados!",
+    date: "10/05/2024"
+  },
+  {
+    id: "OP-2",
+    authorName: "María González",
+    rating: 4,
+    comment: "Buen trabajo con mis frenos. Se demoraron un poco más de lo esperado en entregar el auto, pero la comunicación con el mecánico por el chat fue fluida.",
+    date: "12/05/2024"
+  }
+];
