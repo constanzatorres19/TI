@@ -1,38 +1,42 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { toast } from 'sonner';
+import React, { createContext, useContext, useState } from "react";
 
+// 1. Reemplazas la interfaz por esta:
 interface AuthContextType {
   isAuthenticated: boolean;
-  login: () => void;
+  userEmail: string | null; 
+  login: (email: string) => void; 
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+// 2. Reemplazas el Provider por este:
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  const login = () => {
+  const login = (email: string) => {
     setIsAuthenticated(true);
-    toast.success("Sesión iniciada correctamente");
+    setUserEmail(email); 
   };
 
   const logout = () => {
     setIsAuthenticated(false);
-    toast.info("Sesión cerrada");
+    setUserEmail(null);
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, userEmail, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
+// 3. Este hook probablemente ya lo tenías, se queda igual:
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }
