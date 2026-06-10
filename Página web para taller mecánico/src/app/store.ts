@@ -17,6 +17,7 @@ export const mockVehicles: Record<string, VehicleStatus> = {
     plate: "ABCD-12",
     brand: "Toyota",
     model: "Yaris",
+    clientEmail: "test@taller.com",
     entryDate: "14 May 2024",
     progress: 40,
     activePart: "engine",
