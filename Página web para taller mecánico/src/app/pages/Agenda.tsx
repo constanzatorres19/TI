@@ -10,6 +10,7 @@ import { motion } from "motion/react";
 import { mockAppointments } from "../store";
 import { Appointment } from "../types";
 import { Link } from "react-router";
+import { useAuth } from "../context/AuthContext"; // <-- PASO 4: Importamos el contexto
 
 type BookingData = {
   name: string;
@@ -23,6 +24,9 @@ type BookingData = {
 const TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00"];
 
 export function Agenda() {
+  // PASO 4: Obtenemos el estado de autenticación global
+  const { isAuthenticated, userEmail, login } = useAuth();
+  
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [isSuccess, setIsSuccess] = useState(false);
@@ -30,8 +34,10 @@ export function Agenda() {
 
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authTab, setAuthTab] = useState<"login" | "register">("login");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pendingBookingData, setPendingBookingData] = useState<BookingData | null>(null);
+  
+  // PASO 4: Estado local para capturar el correo ingresado en el modal
+  const [emailInput, setEmailInput] = useState("");
 
   const { register, handleSubmit, formState: { errors } } = useForm<BookingData>();
 
@@ -56,14 +62,17 @@ export function Agenda() {
     finishBooking(data);
   };
 
-  const finishBooking = (data: BookingData) => {
+  // PASO 4: Modificamos finishBooking para recibir opcionalmente un correo de fallback
+  const finishBooking = (data: BookingData, fallbackEmail?: string) => {
     // Simulate API call and save to global mock store
     setTimeout(() => {
-      const newId = `R-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const newId = `A-${Math.random().toString(36).substring(2, 8).toUpperCase()}`; // Cambié R a A para Appointments
       
       const newAppointment: Appointment = {
         id: newId,
         customerName: data.name,
+        // AQUÍ ESTÁ LA MAGIA: Guardamos el correo en la cita
+        clientEmail: (userEmail || fallbackEmail || "invitado@correo.com").toLowerCase(),
         phone: data.phone,
         plate: data.plate.toUpperCase(),
         brand: data.brand,
@@ -84,17 +93,20 @@ export function Agenda() {
 
   const handleAuthSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsAuthenticated(true);
+    
+    // PASO 4: Hacemos login global con el correo ingresado
+    login(emailInput);
     setShowAuthModal(false);
     toast.success(authTab === "login" ? "Sesión iniciada correctamente" : "Cuenta creada exitosamente");
     
     if (pendingBookingData) {
-      finishBooking(pendingBookingData);
+      // Pasamos explícitamente el emailInput porque el userEmail del contexto 
+      // podría no haberse actualizado todavía para este ciclo de render
+      finishBooking(pendingBookingData, emailInput);
     }
   };
 
   const handlePhoneInput = (e: React.FormEvent<HTMLInputElement>) => {
-    // Only allow numbers and format dynamically as 9 1234 5678
     let val = e.currentTarget.value.replace(/\D/g, "");
     if (val.length > 9) val = val.slice(0, 9);
     
@@ -127,12 +139,11 @@ export function Agenda() {
           Has solicitado una cita para el {selectedDate && format(selectedDate, "EEEE d 'de' MMMM", { locale: es })} a las {selectedTime} hrs.
         </p>
         <p className="text-amber-600 dark:text-amber-400 mb-8 font-medium">
-          Importante: Tu hora debe ser confirmada por el mecánico. Ingresa tu patente en el Gemelo Digital para revisar si fue aceptada.
+          Importante: Tu hora debe ser confirmada por el mecánico. Ingresa a "Mis Vehículos" para revisar su estado.
         </p>
         <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 mb-8 inline-block">
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Código de seguimiento:</p>
           <p className="text-2xl font-mono font-bold tracking-wider text-blue-600 dark:text-blue-400">{bookingId}</p>
-          <p className="text-xs text-slate-500 mt-3">También puedes consultar el estado solo usando tu patente.</p>
         </div>
         <div className="flex flex-col sm:flex-row justify-center gap-4">
           <Link 
@@ -145,7 +156,7 @@ export function Agenda() {
             to="/estado"
             className="bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-slate-200 text-white dark:text-slate-900 font-medium py-3 px-8 rounded-xl transition-colors"
           >
-            Ir al Gemelo Digital
+            Ir a Mis Vehículos
           </Link>
         </div>
       </motion.div>
@@ -176,7 +187,7 @@ export function Agenda() {
                 selected={selectedDate}
                 onSelect={(date) => {
                   setSelectedDate(date);
-                  setSelectedTime(""); // Reset time when date changes
+                  setSelectedTime(""); 
                 }}
                 locale={es}
                 disabled={{ before: new Date() }}
@@ -360,7 +371,15 @@ export function Agenda() {
                 )}
                 <div>
                   <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">Correo electrónico</label>
-                  <input required type="email" className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="correo@ejemplo.com" />
+                  {/* PASO 4: Input controlado por el estado emailInput */}
+                  <input 
+                    required 
+                    type="email" 
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" 
+                    placeholder="correo@ejemplo.com" 
+                  />
                 </div>
                 {authTab === "register" && (
                   <div>
